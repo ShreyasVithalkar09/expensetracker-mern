@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Category } from "../models/category.model.js";
 import { Expense } from "../models/expense.model.js";
+import mongoose from "mongoose";
 
 const createExpense = asyncHandler(async (req, res) => {
   const { amount, category, date } = req.body;
@@ -49,11 +50,55 @@ const getExpenses = asyncHandler(async (req, res) => {
 });
 
 const deleteExpense = asyncHandler(async (req, res) => {
-  //
+  const { expenseId } = req.params;
+
+  const expense = await Expense.findOneAndDelete({
+    $and: [
+      { _id: new mongoose.Types.ObjectId(expenseId) },
+      { owner: req.user?._id },
+    ],
+  });
+
+  if (!expense) {
+    throw new ApiError(404, "Expense does not exist!");
+  }
+
+  return res
+    .status(204)
+    .json(new ApiResponse(204, {}, "Expense deleted successfully!"));
 });
 
 const updateExpense = asyncHandler(async (req, res) => {
-  //
+  const { expenseId } = req.params;
+
+  const { amount, category, date } = req.body;
+
+  const expense = await Expense.findOneAndUpdate(
+    {
+      $and: [
+        { _id: new mongoose.Types.ObjectId(expenseId) },
+        { owner: req.user?._id },
+      ],
+    },
+    {
+      $set: {
+        amount,
+        category,
+        date,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!expense) {
+    throw new ApiError(404, "Expense does not exist!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, expense, "Expense updated successfully!"));
 });
 
 export { createExpense, getExpenses, updateExpense, deleteExpense };
