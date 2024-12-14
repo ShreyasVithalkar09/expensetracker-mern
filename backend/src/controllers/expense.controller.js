@@ -5,10 +5,40 @@ import { Category } from "../models/category.model.js";
 import { Expense } from "../models/expense.model.js";
 import mongoose from "mongoose";
 
-const createExpense = asyncHandler(async (req, res) => {
-  const { amount, category, date } = req.body;
+const commonAggregation = () => {
+  return [
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "category",
+      },
+    },
+    {
+      $addFields: {
+        category: {
+          $arrayElemAt: ["$category", 0],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        amount: 1,
+        description: 1,
+        "category.categoryName": 1,
+        "category._id": 1,
+        date: 1,
+      },
+    },
+  ];
+};
 
-  if ([amount, category, date].some((field) => field === "")) {
+const createExpense = asyncHandler(async (req, res) => {
+  const { amount, category, date, description } = req.body;
+
+  if ([amount, category, date, description].some((field) => field === "")) {
     throw new ApiError(400, "All fields are required!");
   }
 
@@ -20,8 +50,9 @@ const createExpense = asyncHandler(async (req, res) => {
   }
 
   const expense = await Expense.create({
-    amount,
+    amount: Number(amount),
     category,
+    description,
     date,
     owner: req.user?._id,
   });
@@ -30,15 +61,30 @@ const createExpense = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while creating expense!");
   }
 
+  const expenseData = await Expense.aggregate([
+    {
+      $match: {
+        owner: req.user?._id,
+        _id: expense._id,
+      },
+    },
+    ...commonAggregation(),
+  ]);
+
   return res
     .status(201)
-    .json(new ApiResponse(201, expense, "Expense added successfully!"));
+    .json(new ApiResponse(201, expenseData[0], "Expense added successfully!"));
 });
 
 const getExpenses = asyncHandler(async (req, res) => {
-  const expenses = await Expense.find({
-    owner: req.user?._id,
-  });
+  const expenses = await Expense.aggregate([
+    {
+      $match: {
+        owner: req.user?._id,
+      },
+    },
+    ...commonAggregation(),
+  ]);
 
   if (!expenses) {
     throw new ApiError(404, "No expenses found, Add one!");
@@ -71,7 +117,7 @@ const deleteExpense = asyncHandler(async (req, res) => {
 const updateExpense = asyncHandler(async (req, res) => {
   const { expenseId } = req.params;
 
-  const { amount, category, date } = req.body;
+  const { amount, category, date, description } = req.body;
 
   const expense = await Expense.findOneAndUpdate(
     {
@@ -83,6 +129,7 @@ const updateExpense = asyncHandler(async (req, res) => {
     {
       $set: {
         amount,
+        description,
         category,
         date,
       },

@@ -43,7 +43,7 @@ userSchema.pre("save", async function (next) {
 userSchema.pre("save", async function (next) {
   if (!this.isModified("avatar")) return next();
 
-  this.avatar = `https://avatar.iran.liara.run/username?username=${this.fullName}`;
+  this.avatar = `https://avatar.iran.liara.run/username?username=${this.fullname}`;
 
   next();
 });

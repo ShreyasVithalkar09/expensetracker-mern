@@ -29,7 +29,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
     email,
     password,
     fullname,
-    avatar: `https://avatar.iran.liara.run/username?username=${fullname}`,
+    avatar
   });
 
   const userCreated = await User.findById(user?._id).select("-password");

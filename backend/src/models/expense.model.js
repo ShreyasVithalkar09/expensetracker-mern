@@ -11,6 +11,10 @@ const expenseSchema = new Schema(
       ref: "Category",
       required: [true, "Category is required"],
     },
+    description: {
+      type: String,
+      required: [true, "Description is required!"],
+    },
     owner: {
       type: mongoose.Types.ObjectId,
       ref: "User",

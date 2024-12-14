@@ -12,7 +12,7 @@ const createCategory = asyncHandler(async (req, res) => {
 
   // check if category already exists
   const existingCategory = await Category.findOne({
-    categoryName,
+    $and: [{ _id: req.user?._id }, { categoryName }]
   });
 
   if (existingCategory) {
